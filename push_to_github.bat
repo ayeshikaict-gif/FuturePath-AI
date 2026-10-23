@@ -1,5 +1,13 @@
 @echo off
 setlocal
+cd /d "%~dp0"
+
+:: Ensure Git is in PATH
+where git >nul 2>&1
+if %ERRORLEVEL% NEQ 0 (
+    set "PATH=%LOCALAPPDATA%\Programs\Git\cmd;C:\Program Files\Git\cmd;%PATH%"
+)
+
 echo ====================================================
 echo   FuturePath AI - Upload to GitHub (ayeshikaict-gif)
 echo ====================================================
