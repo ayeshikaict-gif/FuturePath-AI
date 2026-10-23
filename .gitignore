@@ -5,6 +5,7 @@ backend/venv/
 # Next.js Build
 frontend/.next/
 frontend/out/
+*.tsbuildinfo
 
 # Python Cache & Databases
 __pycache__/

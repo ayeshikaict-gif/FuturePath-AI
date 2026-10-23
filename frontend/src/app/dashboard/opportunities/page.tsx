@@ -304,43 +304,55 @@ export default function OpportunitiesPage() {
             </div>
           </CardHeader>
 
-          {trackerData?.applications?.length === 0 ? (
-            <div className="py-12 text-center text-xs text-muted">
-              <Briefcase className="w-8 h-8 text-muted mx-auto mb-2" />
-              <p>No active applications tracked yet.</p>
-              <p className="mt-1">Change any opportunity status to &quot;Applied&quot; to track your recruitment journey.</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {trackerData?.applications?.map((app: any) => (
-                <div key={app.application_id} className="p-4 rounded-lg border border-border bg-[#F8FAFC] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-                  <div>
-                    <span className="font-bold text-primary">{app.organization}</span>
-                    <h4 className="text-sm font-semibold text-navy mt-0.5">{app.title}</h4>
-                    <p className="text-[11px] text-muted mt-1">Deadline: {app.deadline}</p>
-                  </div>
+          {(() => {
+            const applicationsList = Array.isArray(trackerData?.applications)
+              ? trackerData.applications
+              : Array.isArray(trackerData)
+              ? trackerData
+              : [];
 
-                  <div className="flex items-center gap-3">
-                    <Badge
-                      variant={
-                        app.status === "offered"
-                          ? "success"
-                          : app.status === "interviewing"
-                          ? "warning"
-                          : app.status === "rejected"
-                          ? "error"
-                          : "primary"
-                      }
-                      size="md"
-                      className="capitalize"
-                    >
-                      {app.status}
-                    </Badge>
-                  </div>
+            if (applicationsList.length === 0) {
+              return (
+                <div className="py-12 text-center text-xs text-muted">
+                  <Briefcase className="w-8 h-8 text-muted mx-auto mb-2" />
+                  <p>No active applications tracked yet.</p>
+                  <p className="mt-1">Change any opportunity status to &quot;Applied&quot; to track your recruitment journey.</p>
                 </div>
-              ))}
-            </div>
-          )}
+              );
+            }
+
+            return (
+              <div className="space-y-3">
+                {applicationsList.map((app: any) => (
+                  <div key={app.application_id || app.id} className="p-4 rounded-lg border border-border bg-[#F8FAFC] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                    <div>
+                      <span className="font-bold text-primary">{app.organization || app.company}</span>
+                      <h4 className="text-sm font-semibold text-navy mt-0.5">{app.title}</h4>
+                      <p className="text-[11px] text-muted mt-1">Deadline: {app.deadline}</p>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      <Badge
+                        variant={
+                          app.status === "offered"
+                            ? "success"
+                            : app.status === "interviewing"
+                            ? "warning"
+                            : app.status === "rejected"
+                            ? "error"
+                            : "primary"
+                        }
+                        size="md"
+                        className="capitalize"
+                      >
+                        {app.status}
+                      </Badge>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
         </Card>
       )}
     </div>

@@ -245,6 +245,41 @@ function generateToken(user: StoredUser): string {
   return `fp_${Buffer.from(JSON.stringify(payload)).toString("base64")}`;
 }
 
+// Helper: format complete user object for clients
+function formatUserResponse(user: StoredUser) {
+  const targetCareerSlug = (user.target_career || "full-stack-developer")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+
+  const profile = {
+    institution: user.institution || "University of Colombo - School of Computing",
+    degree: user.degree || "B.Sc. in Computer Science",
+    academic_year: parseInt(String(user.academic_year).replace(/\D/g, "")) || 3,
+    target_career_slug: targetCareerSlug,
+    weekly_study_hours: user.weekly_study_hours || 15,
+    bio: "Undergraduate student passionate about building real-world software systems, clean UI architecture, and robust APIs.",
+    github_url: "https://github.com/ayeshikaict-gif",
+    linkedin_url: "https://linkedin.com",
+    portfolio_published: true,
+    onboarding_completed: user.onboarding_completed ?? true,
+  };
+
+  return {
+    id: user.id,
+    email: user.email,
+    full_name: user.full_name,
+    role: "student",
+    institution: profile.institution,
+    degree: profile.degree,
+    academic_year: user.academic_year || "3rd Year",
+    target_career: user.target_career || "Full-Stack Developer",
+    weekly_study_hours: profile.weekly_study_hours,
+    onboarding_completed: profile.onboarding_completed,
+    profile,
+  };
+}
+
 // Helper: parse authorization token
 function getAuthenticatedUser(req: NextRequest): StoredUser {
   const authHeader = req.headers.get("authorization");
@@ -277,17 +312,7 @@ export async function GET(
 
   // 2. Auth: /auth/me
   if (path === "auth/me") {
-    return NextResponse.json({
-      id: user.id,
-      email: user.email,
-      full_name: user.full_name,
-      institution: user.institution || "University of Colombo",
-      degree: user.degree || "B.Sc. in Computer Science",
-      academic_year: user.academic_year || "3rd Year",
-      target_career: user.target_career || "Full-Stack Developer",
-      weekly_study_hours: user.weekly_study_hours || 15,
-      onboarding_completed: user.onboarding_completed,
-    });
+    return NextResponse.json(formatUserResponse(user));
   }
 
   // 3. Digital Twin: /digital-twin
@@ -342,8 +367,23 @@ export async function GET(
       career_title: profile.title,
       career_slug: profile.slug,
       match_score: 78,
-      matching_skills: ["React", "TypeScript", "Python", "SQL", "Git"],
-      missing_skills: ["Docker", "Kubernetes", "AWS CI/CD", "Redis Caching"],
+      total_required_skills: 8,
+      strong_evidence_skills: [
+        { skill_name: "React", source: "E-Commerce Project" },
+        { skill_name: "TypeScript", source: "Frontend Architecture" },
+        { skill_name: "Python", source: "Data Challenge" },
+        { skill_name: "SQL", source: "Coursework DB" },
+        { skill_name: "Git", source: "GitHub Repositories" },
+      ],
+      partial_evidence_skills: [
+        { skill_name: "REST APIs", importance: "required" },
+        { skill_name: "Docker", importance: "preferred" },
+      ],
+      missing_skills: [
+        { skill_name: "Kubernetes", importance: "required", category: "DevOps" },
+        { skill_name: "AWS CI/CD", importance: "required", category: "Cloud" },
+        { skill_name: "Redis Caching", importance: "preferred", category: "Backend" },
+      ],
       estimated_learning_hours: 64,
       priority_recommendations: [
         "Complete containerization fundamentals with Docker",
@@ -469,17 +509,21 @@ export async function GET(
   }
 
   if (path === "opportunities/my-tracker") {
-    return NextResponse.json([
-      {
-        id: 1,
-        opportunity_id: 2,
-        title: "Cloud DevOps Intern",
-        company: "Sysco LABS Sri Lanka",
-        status: "Applied",
-        updated_at: "2026-10-21",
-        notes: "Submitted CV and verified FuturePath profile link.",
-      },
-    ]);
+    return NextResponse.json({
+      applications: [
+        {
+          application_id: 1,
+          id: 1,
+          opportunity_id: 2,
+          title: "Cloud DevOps Intern",
+          organization: "Sysco LABS Sri Lanka",
+          status: "applied",
+          deadline: "2026-11-15",
+          updated_at: "2026-10-21",
+          notes: "Submitted CV and verified FuturePath profile link.",
+        },
+      ],
+    });
   }
 
   // 8. Lectures: /lectures
@@ -552,16 +596,72 @@ export async function GET(
 
   // 10. Dashboard Summary: /dashboard/summary
   if (path === "dashboard/summary") {
+    const targetCareerSlug = (user.target_career || "full-stack-developer")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-");
+
     return NextResponse.json({
+      student_name: user.full_name,
       readiness_score: 76,
-      target_career: user.target_career || "Full-Stack Developer",
       verified_skills: 9,
-      active_opportunities_count: opportunities.length,
       roadmap_progress: 62,
       ats_score: 84,
-      weekly_study_goal: user.weekly_study_hours || 15,
-      study_hours_completed: 11,
-      recommendations_count: 3,
+      target_career: {
+        title: user.target_career || "Full-Stack Developer",
+        slug: targetCareerSlug,
+        readiness_score: 76,
+        readiness_level: "Strong Fit",
+      },
+      skills_summary: {
+        total_skills: 14,
+        strong_evidence_count: 9,
+        missing_skills_count: 3,
+      },
+      roadmap_summary: {
+        has_roadmap: true,
+        progress_percentage: 62,
+        completed_tasks: 7,
+        total_tasks: 12,
+        upcoming_tasks: [
+          {
+            id: 301,
+            title: "Create optimized Dockerfile with non-root user execution",
+            skill_name: "Docker",
+            estimated_hours: 6,
+            phase_title: "Phase 3: Production DevOps & Cloud Deployment",
+            resource_url: "https://docs.docker.com/",
+          },
+        ],
+      },
+      opportunities_summary: {
+        saved_count: 2,
+        saved_opportunities: [
+          {
+            id: 2,
+            title: "Cloud DevOps Intern",
+            organization: "Sysco LABS Sri Lanka",
+            deadline: "2026-11-15",
+            location: "Colombo, Sri Lanka",
+            opportunity_type: "Internship",
+            url: "https://syscolabs.lk/careers",
+          },
+          {
+            id: 6,
+            title: "Junior Full-Stack Engineer (Remote)",
+            organization: "99x Tech",
+            deadline: "2026-12-20",
+            location: "Colombo / Remote Norway",
+            opportunity_type: "Full-Time",
+            url: "https://99x.io/careers",
+          },
+        ],
+      },
+      recommended_action: {
+        title: "Build Container Skills for Cloud DevOps",
+        description: "Complete your upcoming Docker milestone to increase your match score by +12%.",
+        link: "/dashboard/roadmap",
+        action_label: "Continue Roadmap",
+      },
     });
   }
 
@@ -612,16 +712,7 @@ export async function POST(
       return NextResponse.json({
         access_token: token,
         token_type: "bearer",
-        user: {
-          id: existing.id,
-          email: existing.email,
-          full_name: existing.full_name,
-          institution: existing.institution,
-          degree: existing.degree,
-          academic_year: existing.academic_year,
-          target_career: existing.target_career,
-          onboarding_completed: existing.onboarding_completed,
-        },
+        user: formatUserResponse(existing),
       });
     } catch {
       return NextResponse.json(
@@ -668,16 +759,7 @@ export async function POST(
       return NextResponse.json({
         access_token: token,
         token_type: "bearer",
-        user: {
-          id: user.id,
-          email: user.email,
-          full_name: user.full_name,
-          institution: user.institution,
-          degree: user.degree,
-          academic_year: user.academic_year,
-          target_career: user.target_career,
-          onboarding_completed: user.onboarding_completed,
-        },
+        user: formatUserResponse(user),
       });
     } catch {
       return NextResponse.json(

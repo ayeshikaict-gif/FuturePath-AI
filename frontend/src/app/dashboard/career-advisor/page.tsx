@@ -90,6 +90,17 @@ export default function CareerAdvisorPage() {
 
   const isCurrentActiveGoal = user?.profile?.target_career_slug === selectedSlug;
 
+  const strongSkills = (matchData?.strong_evidence_skills || []).map((s: any) =>
+    typeof s === "string" ? { skill_name: s, source: "Project Evidence" } : s
+  );
+  const partialSkills = (matchData?.partial_evidence_skills || []).map((s: any) =>
+    typeof s === "string" ? { skill_name: s } : s
+  );
+  const missingSkills = (matchData?.missing_skills || []).map((s: any) =>
+    typeof s === "string" ? { skill_name: s, importance: "required" } : s
+  );
+  const totalRequired = matchData?.total_required_skills || (strongSkills.length + partialSkills.length + missingSkills.length);
+
   return (
     <div className="space-y-6">
       {/* Page Header */}
@@ -195,25 +206,25 @@ export default function CareerAdvisorPage() {
                 <div className="mt-4 space-y-3">
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-muted">Total Role Requirements</span>
-                    <span className="font-bold text-navy">{matchData?.total_required_skills}</span>
+                    <span className="font-bold text-navy">{totalRequired}</span>
                   </div>
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-success font-medium flex items-center gap-1">
                       <CheckCircle2 className="w-3.5 h-3.5" /> Strong Evidence
                     </span>
-                    <span className="font-bold text-navy">{matchData?.strong_evidence_skills.length}</span>
+                    <span className="font-bold text-navy">{strongSkills.length}</span>
                   </div>
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-primary font-medium flex items-center gap-1">
                       <AlertTriangle className="w-3.5 h-3.5 text-primary" /> Partial Evidence
                     </span>
-                    <span className="font-bold text-navy">{matchData?.partial_evidence_skills.length}</span>
+                    <span className="font-bold text-navy">{partialSkills.length}</span>
                   </div>
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-error font-medium flex items-center gap-1">
                       <XCircle className="w-3.5 h-3.5" /> Missing Skills
                     </span>
-                    <span className="font-bold text-navy">{matchData?.missing_skills.length}</span>
+                    <span className="font-bold text-navy">{missingSkills.length}</span>
                   </div>
                 </div>
               </div>
@@ -235,14 +246,14 @@ export default function CareerAdvisorPage() {
                   <CheckCircle2 className="w-4 h-4 text-success" />
                   <span className="text-xs font-bold text-navy uppercase tracking-wider">Strong Evidence</span>
                 </div>
-                <Badge variant="success">{matchData?.strong_evidence_skills.length}</Badge>
+                <Badge variant="success">{strongSkills.length}</Badge>
               </div>
 
-              {matchData?.strong_evidence_skills.length === 0 ? (
+              {strongSkills.length === 0 ? (
                 <p className="text-xs text-muted py-4 text-center">No skills currently verified at this tier.</p>
               ) : (
                 <div className="space-y-2.5">
-                  {matchData?.strong_evidence_skills.map((s: any) => (
+                  {strongSkills.map((s: any) => (
                     <div key={s.skill_name} className="p-3 rounded-lg border border-border bg-[#F8FAFC]">
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-semibold text-navy">{s.skill_name}</span>
@@ -262,14 +273,14 @@ export default function CareerAdvisorPage() {
                   <AlertTriangle className="w-4 h-4 text-warning" />
                   <span className="text-xs font-bold text-navy uppercase tracking-wider">Partial Evidence</span>
                 </div>
-                <Badge variant="warning">{matchData?.partial_evidence_skills.length}</Badge>
+                <Badge variant="warning">{partialSkills.length}</Badge>
               </div>
 
-              {matchData?.partial_evidence_skills.length === 0 ? (
+              {partialSkills.length === 0 ? (
                 <p className="text-xs text-muted py-4 text-center">No partial skills recorded.</p>
               ) : (
                 <div className="space-y-2.5">
-                  {matchData?.partial_evidence_skills.map((s: any) => (
+                  {partialSkills.map((s: any) => (
                     <div key={s.skill_name} className="p-3 rounded-lg border border-border bg-[#F8FAFC]">
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-semibold text-navy">{s.skill_name}</span>
@@ -289,22 +300,22 @@ export default function CareerAdvisorPage() {
                   <XCircle className="w-4 h-4 text-error" />
                   <span className="text-xs font-bold text-navy uppercase tracking-wider">Priority Skill Gaps</span>
                 </div>
-                <Badge variant="error">{matchData?.missing_skills.length}</Badge>
+                <Badge variant="error">{missingSkills.length}</Badge>
               </div>
 
-              {matchData?.missing_skills.length === 0 ? (
+              {missingSkills.length === 0 ? (
                 <p className="text-xs text-muted py-4 text-center">All role prerequisites demonstrated!</p>
               ) : (
                 <div className="space-y-2.5">
-                  {matchData?.missing_skills.map((s: any) => (
+                  {missingSkills.map((s: any) => (
                     <div key={s.skill_name} className="p-3 rounded-lg border border-border bg-[#F8FAFC]">
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-semibold text-navy">{s.skill_name}</span>
                         <Badge variant={s.importance === "required" ? "error" : "neutral"} size="sm" className="capitalize">
-                          {s.importance}
+                          {s.importance || "Required"}
                         </Badge>
                       </div>
-                      <p className="text-[11px] text-muted mt-1 capitalize">Category: {s.category.replace("_", " ")}</p>
+                      <p className="text-[11px] text-muted mt-1 capitalize">Category: {s.category ? String(s.category).replace("_", " ") : "Technical"}</p>
                     </div>
                   ))}
                 </div>
