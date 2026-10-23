@@ -28,7 +28,9 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   login: (credentials: { email: string; password: string }) => Promise<void>;
-  register: (userData: { email: string; password: string; full_name: string }) => Promise<void>;
+  register: (userData: any) => Promise<any>;
+  verifyEmail: (data: { email: string; code: string }) => Promise<void>;
+  resendCode: (email: string) => Promise<any>;
   logout: () => void;
   refreshUser: () => Promise<void>;
 }
@@ -67,10 +69,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await refreshUser();
   };
 
-  const register = async (userData: { email: string; password: string; full_name: string }) => {
+  const register = async (userData: any) => {
     const data = await api.auth.register(userData);
-    setToken(data.access_token);
+    if (data.access_token) {
+      setToken(data.access_token);
+      await refreshUser();
+    }
+    return data;
+  };
+
+  const verifyEmail = async (data: { email: string; code: string }) => {
+    const res = await api.auth.verifyEmail(data);
+    setToken(res.access_token);
     await refreshUser();
+  };
+
+  const resendCode = async (email: string) => {
+    return await api.auth.resendCode(email);
   };
 
   const logout = () => {
@@ -82,7 +97,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, refreshUser }}>
+    <AuthContext.Provider value={{ user, loading, login, register, verifyEmail, resendCode, logout, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

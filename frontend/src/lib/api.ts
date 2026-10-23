@@ -69,9 +69,27 @@ export const api = {
         body: JSON.stringify(credentials),
       }),
     register: (userData: any) =>
-      request<{ access_token: string; token_type: string; user: any }>("/auth/register", {
+      request<{
+        access_token?: string;
+        token_type?: string;
+        user?: any;
+        requires_verification?: boolean;
+        email?: string;
+        preview_code?: string;
+        message?: string;
+      }>("/auth/register", {
         method: "POST",
         body: JSON.stringify(userData),
+      }),
+    verifyEmail: (data: { email: string; code: string }) =>
+      request<{ access_token: string; token_type: string; user: any; message?: string }>("/auth/verify-email", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+    resendCode: (email: string) =>
+      request<{ success: boolean; preview_code?: string; message?: string }>("/auth/resend-code", {
+        method: "POST",
+        body: JSON.stringify({ email }),
       }),
     getMe: () => request<any>("/auth/me"),
     updateProfile: (profile: any) =>

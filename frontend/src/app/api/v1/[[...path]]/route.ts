@@ -12,6 +12,9 @@ interface StoredUser {
   target_career?: string;
   weekly_study_hours?: number;
   onboarding_completed: boolean;
+  is_verified: boolean;
+  verification_code?: string;
+  verification_code_expires_at?: number;
   created_at: string;
 }
 
@@ -27,6 +30,7 @@ const users: StoredUser[] = [
     target_career: "Full-Stack Developer",
     weekly_study_hours: 15,
     onboarding_completed: true,
+    is_verified: true,
     created_at: new Date().toISOString(),
   },
 ];
@@ -669,6 +673,40 @@ export async function GET(
   return NextResponse.json({ message: "OK", path });
 }
 
+// Helper: send verification email (uses Resend/SMTP if configured, or logs in dev)
+async function sendVerificationEmail(email: string, code: string, name: string) {
+  console.log(`[FuturePath Auth] Verification code for ${email}: ${code}`);
+  
+  if (process.env.RESEND_API_KEY) {
+    try {
+      await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${process.env.RESEND_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          from: process.env.EMAIL_FROM || "FuturePath AI <onboarding@futurepath.edu>",
+          to: [email],
+          subject: `${code} is your FuturePath AI verification code`,
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #E2E8F0; border-radius: 8px;">
+              <h2 style="color: #172033; margin-bottom: 8px;">Welcome to FuturePath AI, ${name}!</h2>
+              <p style="color: #64748B; font-size: 14px;">Please use the 6-digit verification code below to verify your student account and complete registration.</p>
+              <div style="background-color: #EDF3FF; border: 1px solid #CBDDFE; border-radius: 8px; padding: 18px; text-align: center; margin: 24px 0;">
+                <span style="font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #2448A5; font-family: monospace;">${code}</span>
+              </div>
+              <p style="color: #64748B; font-size: 12px;">This code will expire in 15 minutes. If you did not create an account on FuturePath AI, please ignore this email.</p>
+            </div>
+          `,
+        }),
+      });
+    } catch (err) {
+      console.error("[Email Service] Error dispatching email via Resend", err);
+    }
+  }
+}
+
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ path?: string[] }> }
@@ -689,36 +727,162 @@ export async function POST(
         );
       }
 
-      // Check if user already exists
-      let existing = users.find((u) => u.email.toLowerCase() === email.toLowerCase());
-      if (!existing) {
+      const normalizedEmail = email.toLowerCase().trim();
+      let existing = users.find((u) => u.email.toLowerCase() === normalizedEmail);
+
+      if (existing && existing.is_verified) {
+        return NextResponse.json(
+          { detail: "An account with this email address already exists. Please sign in." },
+          { status: 400 }
+        );
+      }
+
+      // Generate a secure 6-digit verification code
+      const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+      const expiresAt = Date.now() + 15 * 60 * 1000;
+
+      if (existing) {
+        existing.password = password;
+        if (full_name) existing.full_name = full_name;
+        if (institution) existing.institution = institution;
+        if (degree) existing.degree = degree;
+        if (academic_year) existing.academic_year = academic_year;
+        if (target_career) existing.target_career = target_career;
+        existing.verification_code = verificationCode;
+        existing.verification_code_expires_at = expiresAt;
+      } else {
         existing = {
           id: nextUserId++,
-          email: email.toLowerCase(),
+          email: normalizedEmail,
           password,
-          full_name: full_name || email.split("@")[0],
-          institution: institution || "University",
-          degree: degree || "Computer Science / Information Technology",
+          full_name: full_name || normalizedEmail.split("@")[0],
+          institution: institution || "University of Colombo",
+          degree: degree || "B.Sc. in Computer Science",
           academic_year: academic_year || "3rd Year",
           target_career: target_career || "Full-Stack Developer",
           weekly_study_hours: 15,
-          onboarding_completed: true,
+          onboarding_completed: false,
+          is_verified: false,
+          verification_code: verificationCode,
+          verification_code_expires_at: expiresAt,
           created_at: new Date().toISOString(),
         };
         users.push(existing);
       }
 
-      const token = generateToken(existing);
+      await sendVerificationEmail(normalizedEmail, verificationCode, existing.full_name);
+
       return NextResponse.json({
-        access_token: token,
-        token_type: "bearer",
-        user: formatUserResponse(existing),
+        success: true,
+        requires_verification: true,
+        email: existing.email,
+        preview_code: verificationCode,
+        message: `A 6-digit verification code has been sent to ${existing.email}.`,
       });
     } catch {
       return NextResponse.json(
         { detail: "Invalid registration payload." },
         { status: 400 }
       );
+    }
+  }
+
+  // 1b. Auth: /auth/verify-email
+  if (path === "auth/verify-email") {
+    try {
+      const body = await req.json();
+      const { email, code } = body;
+
+      if (!email || !code) {
+        return NextResponse.json(
+          { detail: "Email and verification code are required." },
+          { status: 400 }
+        );
+      }
+
+      const normalizedEmail = email.toLowerCase().trim();
+      const user = users.find((u) => u.email.toLowerCase() === normalizedEmail);
+
+      if (!user) {
+        return NextResponse.json(
+          { detail: "No account found with this email address. Please register first." },
+          { status: 404 }
+        );
+      }
+
+      if (user.is_verified) {
+        const token = generateToken(user);
+        return NextResponse.json({
+          access_token: token,
+          token_type: "bearer",
+          user: formatUserResponse(user),
+          message: "Account already verified. Welcome back!",
+        });
+      }
+
+      const inputCode = String(code).trim();
+      if (!user.verification_code || user.verification_code !== inputCode) {
+        return NextResponse.json(
+          { detail: "Invalid 6-digit verification code. Please check your email and try again." },
+          { status: 400 }
+        );
+      }
+
+      if (user.verification_code_expires_at && Date.now() > user.verification_code_expires_at) {
+        return NextResponse.json(
+          { detail: "Verification code has expired. Please request a new code." },
+          { status: 400 }
+        );
+      }
+
+      // Mark verified
+      user.is_verified = true;
+      user.verification_code = undefined;
+      user.verification_code_expires_at = undefined;
+
+      const token = generateToken(user);
+      return NextResponse.json({
+        access_token: token,
+        token_type: "bearer",
+        user: formatUserResponse(user),
+        message: "Email successfully verified! Welcome to FuturePath AI.",
+      });
+    } catch {
+      return NextResponse.json(
+        { detail: "Failed to process verification code." },
+        { status: 400 }
+      );
+    }
+  }
+
+  // 1c. Auth: /auth/resend-code
+  if (path === "auth/resend-code") {
+    try {
+      const body = await req.json();
+      const { email } = body;
+      const normalizedEmail = (email || "").toLowerCase().trim();
+      const user = users.find((u) => u.email.toLowerCase() === normalizedEmail);
+
+      if (!user) {
+        return NextResponse.json(
+          { detail: "No account found with this email." },
+          { status: 404 }
+        );
+      }
+
+      const newCode = Math.floor(100000 + Math.random() * 900000).toString();
+      user.verification_code = newCode;
+      user.verification_code_expires_at = Date.now() + 15 * 60 * 1000;
+
+      await sendVerificationEmail(normalizedEmail, newCode, user.full_name);
+
+      return NextResponse.json({
+        success: true,
+        preview_code: newCode,
+        message: `A new 6-digit verification code has been sent to ${normalizedEmail}.`,
+      });
+    } catch {
+      return NextResponse.json({ detail: "Failed to resend code." }, { status: 400 });
     }
   }
 
@@ -735,24 +899,40 @@ export async function POST(
         );
       }
 
-      // Find user or allow demo user / create if new
-      let user = users.find((u) => u.email.toLowerCase() === email.toLowerCase());
+      const normalizedEmail = email.toLowerCase().trim();
+      let user = users.find((u) => u.email.toLowerCase() === normalizedEmail);
+
       if (!user) {
-        // Automatically accept or register on login for seamless demo experience
-        user = {
-          id: nextUserId++,
-          email: email.toLowerCase(),
-          password,
-          full_name: email.split("@")[0].replace(/[._]/g, " "),
-          institution: "University of Colombo - School of Computing",
-          degree: "B.Sc. in Computer Science",
-          academic_year: "3rd Year",
-          target_career: "Full-Stack Developer",
-          weekly_study_hours: 15,
-          onboarding_completed: true,
-          created_at: new Date().toISOString(),
-        };
-        users.push(user);
+        return NextResponse.json(
+          { detail: "No account found with this email address. Please click 'Create an account' to register." },
+          { status: 404 }
+        );
+      }
+
+      // Check password
+      if (user.password && user.password !== password) {
+        return NextResponse.json(
+          { detail: "Incorrect password. Please verify your credentials and try again." },
+          { status: 401 }
+        );
+      }
+
+      // Check email verification status
+      if (user.is_verified === false) {
+        const freshCode = user.verification_code || Math.floor(100000 + Math.random() * 900000).toString();
+        user.verification_code = freshCode;
+        user.verification_code_expires_at = Date.now() + 15 * 60 * 1000;
+        await sendVerificationEmail(normalizedEmail, freshCode, user.full_name);
+
+        return NextResponse.json(
+          {
+            detail: "Your email address is not yet verified. Please enter the 6-digit verification code sent to your inbox.",
+            requires_verification: true,
+            email: user.email,
+            preview_code: freshCode,
+          },
+          { status: 403 }
+        );
       }
 
       const token = generateToken(user);
