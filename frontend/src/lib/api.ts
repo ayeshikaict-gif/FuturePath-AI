@@ -4,10 +4,7 @@ const getApiBase = () => {
   if (process.env.NEXT_PUBLIC_API_URL) {
     return process.env.NEXT_PUBLIC_API_URL;
   }
-  if (typeof window !== "undefined") {
-    return "/api/v1";
-  }
-  return "http://127.0.0.1:8000/api/v1";
+  return "/api/v1";
 };
 
 export function getToken(): string | null {
@@ -47,12 +44,15 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
   });
 
   if (!response.ok) {
-    let errorDetail = "An unexpected error occurred.";
+    let errorDetail = "";
     try {
       const errorJson = await response.json();
-      errorDetail = errorJson.detail || errorDetail;
+      errorDetail = errorJson.detail || errorJson.message || "";
     } catch {
-      errorDetail = response.statusText || errorDetail;
+      // Body is not JSON
+    }
+    if (!errorDetail) {
+      errorDetail = response.statusText ? `${response.status}: ${response.statusText}` : `Request failed with HTTP ${response.status}`;
     }
     throw new Error(errorDetail);
   }

@@ -1,21 +1,26 @@
 import type { NextConfig } from "next";
 
-const backendUrl =
-  process.env.BACKEND_URL ||
-  (process.env.NODE_ENV === "production"
-    ? "https://future-path-ai-mfso.vercel.app"
-    : "http://127.0.0.1:8000");
-
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-  // Proxy all /api/v1 requests seamlessly to the FastAPI backend
+  // Seamlessly proxy to external backend if BACKEND_URL is set, or local development server
   async rewrites() {
-    return [
-      {
-        source: "/api/v1/:path*",
-        destination: `${backendUrl}/api/v1/:path*`,
-      },
-    ];
+    if (process.env.BACKEND_URL) {
+      return [
+        {
+          source: "/api/v1/:path*",
+          destination: `${process.env.BACKEND_URL}/api/v1/:path*`,
+        },
+      ];
+    }
+    if (process.env.NODE_ENV === "development") {
+      return [
+        {
+          source: "/api/v1/:path*",
+          destination: "http://127.0.0.1:8000/api/v1/:path*",
+        },
+      ];
+    }
+    return [];
   },
 };
 
