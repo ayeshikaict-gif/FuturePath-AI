@@ -1,0 +1,23 @@
+KAVINDU PERERA
+Colombo, Sri Lanka | student@futurepath.edu | github.com/kavindu-perera-demo
+
+EDUCATION
+University of Colombo School of Computing
+B.Sc. (Hons) in Software Engineering, Expected Dec 2027
+Relevant Coursework: Data Structures & Algorithms, Database Systems, Web Architecture
+
+TECHNICAL SKILLS
+Languages: Python, TypeScript, JavaScript, SQL, HTML5, CSS3
+Frameworks & Libraries: React, Node.js, Next.js, FastAPI, Tailwind CSS
+Databases & Cloud: PostgreSQL, MongoDB, Redis, Docker, Git, REST APIs, Linux
+
+WORK & INTERNSHIP EXPERIENCE
+Software Development Intern — Tech Ventures Lanka (June 2026 - Present)
+- Developed and maintained responsive frontend components using React and TypeScript for client portal.
+- Implemented backend REST endpoints in Python FastAPI connected to PostgreSQL database.
+- Optimized database query indexes reducing response latency by 35% across 20+ endpoints.
+
+ACADEMIC & PORTFOLIO PROJECTS
+Campus Event Management Platform | React, Node.js, PostgreSQL, Docker
+- Built collaborative university event discovery portal supporting 500+ active student users.
+- Automated deployment containerization with Docker and integrated GitHub Actions CI/CD pipeline.
