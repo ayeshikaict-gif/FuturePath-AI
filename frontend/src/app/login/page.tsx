@@ -163,24 +163,9 @@ export default function LoginPage() {
                   <Mail className="w-5 h-5" />
                 </div>
                 <p className="text-xs text-muted">
-                  Your account requires email verification before signing in.
+                  Your account requires email verification before signing in. A 6-digit code was sent to <span className="font-semibold text-navy">{email}</span>.
                 </p>
               </div>
-
-              {previewCode && (
-                <div className="p-3 rounded-lg bg-[#EDF3FF] border border-[#CBDDFE] text-xs flex items-center justify-between">
-                  <span>
-                    Demonstration Code: <strong>{previewCode}</strong>
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setVerificationCode(previewCode)}
-                    className="text-primary font-bold hover:underline"
-                  >
-                    Auto-fill
-                  </button>
-                </div>
-              )}
 
               <div>
                 <label className="block text-xs font-semibold text-navy mb-1.5 text-center">

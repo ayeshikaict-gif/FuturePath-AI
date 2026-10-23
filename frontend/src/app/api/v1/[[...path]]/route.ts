@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import nodemailer from "nodemailer";
 
 // In-memory persistent data store for serverless Next.js deployment
 interface StoredUser {
@@ -673,13 +674,67 @@ export async function GET(
   return NextResponse.json({ message: "OK", path });
 }
 
-// Helper: send verification email (uses Resend/SMTP if configured, or logs in dev)
-async function sendVerificationEmail(email: string, code: string, name: string) {
-  console.log(`[FuturePath Auth] Verification code for ${email}: ${code}`);
-  
+// Helper: send verification email (uses Nodemailer / Gmail SMTP / Resend)
+async function sendVerificationEmail(email: string, code: string, name: string): Promise<boolean> {
+  console.log(`[FuturePath Auth] Dispatching verification code ${code} to ${email}`);
+
+  // 1. SMTP / Gmail Transport (Nodemailer)
+  const smtpUser = process.env.EMAIL_USER || process.env.SMTP_USER || process.env.GMAIL_USER;
+  const smtpPass = process.env.EMAIL_PASS || process.env.SMTP_PASSWORD || process.env.GMAIL_APP_PASSWORD;
+  const smtpHost = process.env.SMTP_HOST || "smtp.gmail.com";
+  const smtpPort = Number(process.env.SMTP_PORT) || 465;
+
+  if (smtpUser && smtpPass) {
+    try {
+      const transporter = nodemailer.createTransport({
+        host: smtpHost,
+        port: smtpPort,
+        secure: smtpPort === 465,
+        auth: {
+          user: smtpUser,
+          pass: smtpPass,
+        },
+      });
+
+      await transporter.sendMail({
+        from: `"FuturePath AI" <${smtpUser}>`,
+        to: email,
+        subject: `${code} is your FuturePath AI verification code`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 580px; margin: 0 auto; padding: 32px 24px; border: 1px solid #E2E8F0; border-radius: 12px; background: #ffffff;">
+            <div style="text-align: center; margin-bottom: 24px;">
+              <h2 style="color: #172033; font-size: 22px; font-weight: 700; margin: 0 0 6px 0;">FuturePath AI</h2>
+              <p style="color: #64748B; font-size: 13px; margin: 0;">Student Career Intelligence Platform</p>
+            </div>
+            <p style="color: #172033; font-size: 15px; margin-bottom: 12px;">Hello <strong>${name}</strong>,</p>
+            <p style="color: #475569; font-size: 14px; line-height: 1.6; margin-bottom: 24px;">
+              Thank you for registering on FuturePath AI. Please use the 6-digit confirmation code below to verify your email address and activate your student account.
+            </p>
+            <div style="background-color: #EDF3FF; border: 1px solid #CBDDFE; border-radius: 10px; padding: 20px; text-align: center; margin-bottom: 24px;">
+              <span style="font-size: 34px; font-weight: 800; letter-spacing: 10px; color: #2448A5; font-family: monospace;">${code}</span>
+            </div>
+            <p style="color: #64748B; font-size: 12px; line-height: 1.5; margin: 0 0 16px 0;">
+              This verification code will expire in 15 minutes. If you did not request this registration, please disregard this email.
+            </p>
+            <hr style="border: none; border-top: 1px solid #E2E8F0; margin: 24px 0 16px 0;" />
+            <p style="color: #94A3B8; font-size: 11px; text-align: center; margin: 0;">
+              &copy; 2026 FuturePath AI. Discover Your Potential. Build Your Skills. Shape Your Future.
+            </p>
+          </div>
+        `,
+      });
+
+      console.log(`[FuturePath Auth] Successfully delivered email via SMTP to ${email}`);
+      return true;
+    } catch (err) {
+      console.error("[FuturePath Auth] SMTP email delivery failed:", err);
+    }
+  }
+
+  // 2. Resend API
   if (process.env.RESEND_API_KEY) {
     try {
-      await fetch("https://api.resend.com/emails", {
+      const res = await fetch("https://api.resend.com/emails", {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${process.env.RESEND_API_KEY}`,
@@ -690,21 +745,27 @@ async function sendVerificationEmail(email: string, code: string, name: string) 
           to: [email],
           subject: `${code} is your FuturePath AI verification code`,
           html: `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #E2E8F0; border-radius: 8px;">
-              <h2 style="color: #172033; margin-bottom: 8px;">Welcome to FuturePath AI, ${name}!</h2>
-              <p style="color: #64748B; font-size: 14px;">Please use the 6-digit verification code below to verify your student account and complete registration.</p>
-              <div style="background-color: #EDF3FF; border: 1px solid #CBDDFE; border-radius: 8px; padding: 18px; text-align: center; margin: 24px 0;">
+            <div style="font-family: Arial, sans-serif; max-width: 580px; margin: 0 auto; padding: 32px 24px; border: 1px solid #E2E8F0; border-radius: 12px; background: #ffffff;">
+              <h2 style="color: #172033; font-size: 22px; font-weight: 700; margin-bottom: 12px;">FuturePath AI</h2>
+              <p style="color: #475569; font-size: 14px;">Hello ${name}, your 6-digit email verification code is:</p>
+              <div style="background-color: #EDF3FF; border: 1px solid #CBDDFE; border-radius: 10px; padding: 20px; text-align: center; margin: 20px 0;">
                 <span style="font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #2448A5; font-family: monospace;">${code}</span>
               </div>
-              <p style="color: #64748B; font-size: 12px;">This code will expire in 15 minutes. If you did not create an account on FuturePath AI, please ignore this email.</p>
+              <p style="color: #64748B; font-size: 12px;">This code expires in 15 minutes.</p>
             </div>
           `,
         }),
       });
+      if (res.ok) {
+        console.log(`[FuturePath Auth] Delivered email via Resend to ${email}`);
+        return true;
+      }
     } catch (err) {
-      console.error("[Email Service] Error dispatching email via Resend", err);
+      console.error("[FuturePath Auth] Resend API error:", err);
     }
   }
+
+  return false;
 }
 
 export async function POST(
@@ -776,7 +837,6 @@ export async function POST(
         success: true,
         requires_verification: true,
         email: existing.email,
-        preview_code: verificationCode,
         message: `A 6-digit verification code has been sent to ${existing.email}.`,
       });
     } catch {
@@ -878,7 +938,6 @@ export async function POST(
 
       return NextResponse.json({
         success: true,
-        preview_code: newCode,
         message: `A new 6-digit verification code has been sent to ${normalizedEmail}.`,
       });
     } catch {
@@ -929,7 +988,6 @@ export async function POST(
             detail: "Your email address is not yet verified. Please enter the 6-digit verification code sent to your inbox.",
             requires_verification: true,
             email: user.email,
-            preview_code: freshCode,
           },
           { status: 403 }
         );

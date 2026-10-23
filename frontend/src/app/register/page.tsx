@@ -68,7 +68,6 @@ export default function RegisterPage() {
 
   // Verification state
   const [verificationCode, setVerificationCode] = useState("");
-  const [previewCode, setPreviewCode] = useState<string | null>(null);
   const [resendCooldown, setResendCooldown] = useState(0);
 
   const [isLoading, setIsLoading] = useState(false);
@@ -345,31 +344,9 @@ export default function RegisterPage() {
                 <h3 className="text-base font-bold text-navy">Check Your Email Inbox</h3>
                 <p className="text-xs text-muted mt-1 max-w-sm mx-auto">
                   We sent a 6-digit confirmation code to{" "}
-                  <span className="font-semibold text-navy">{email}</span>.
+                  <span className="font-semibold text-navy">{email}</span>. Please check your inbox and spam folder.
                 </p>
               </div>
-
-              {/* Instant Auto-Fill Banner for Development & Demonstration */}
-              {previewCode && (
-                <div className="p-3.5 rounded-lg bg-[#EDF3FF] border border-[#CBDDFE] flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
-                  <div className="flex items-center gap-2">
-                    <Sparkles className="w-4 h-4 text-primary flex-shrink-0" />
-                    <div>
-                      <span className="font-semibold text-navy">Demonstration Code: </span>
-                      <span className="font-mono font-bold text-primary tracking-wider text-sm">
-                        {previewCode}
-                      </span>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setVerificationCode(previewCode)}
-                    className="text-xs text-primary font-bold hover:underline self-end sm:self-center"
-                  >
-                    Click to Auto-fill &rarr;
-                  </button>
-                </div>
-              )}
 
               <div>
                 <label className="block text-xs font-semibold text-navy mb-2 text-center">
