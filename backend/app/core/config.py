@@ -10,11 +10,17 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 24 hours for dev convenience
     
-    # Database
-    DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///./futurepath.db")
+    # Database (uses /tmp on serverless environments like Vercel if not overridden)
+    DATABASE_URL: str = os.getenv(
+        "DATABASE_URL",
+        "sqlite:////tmp/futurepath.db" if os.getenv("VERCEL") else "sqlite:///./futurepath.db"
+    )
     
     # Upload storage
-    UPLOAD_DIR: str = os.getenv("UPLOAD_DIR", "./uploads")
+    UPLOAD_DIR: str = os.getenv(
+        "UPLOAD_DIR",
+        "/tmp/uploads" if os.getenv("VERCEL") else "./uploads"
+    )
     MAX_UPLOAD_SIZE_MB: int = 10
     
     # CORS

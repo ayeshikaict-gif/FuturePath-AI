@@ -32,7 +32,7 @@ app.add_middleware(
         "http://localhost:8000",
         "http://127.0.0.1:8000",
     ],
-    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1|172\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+)(:\d+)?$",
+    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1|.*\.vercel\.app|172\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+)(:\d+)?$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
